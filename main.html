@@ -1,0 +1,364 @@
+<a href="${selectedNode.original_url}" target="_blank">${selectedNode.original_url}</a>
+                    </div>
+                `;
+            }
+            
+            // Connected nodes
+            const connections = filteredData.links.filter(link => 
+                link.source.id === selectedNode.id || link.target.id === selectedNode.id
+            );
+            
+            if (connections.length > 0) {
+                detailsHtml += `<h4>Connections</h4><ul>`;
+                
+                connections.forEach(conn => {
+                    const isSource = conn.source.id === selectedNode.id;
+                    const connectedNode = isSource ? conn.target : conn.source;
+                    const direction = isSource ? "→" : "←";
+                    
+                    detailsHtml += `
+                        <li>
+                            ${isSource ? selectedNode.label : connectedNode.label} 
+                            <strong>${conn.type}</strong> ${direction} 
+                            ${isSource ? connectedNode.label : selectedNode.label}
+                        </li>
+                    `;
+                });
+                
+                detailsHtml += `</ul>`;
+            }
+            
+            detailsPanel.innerHTML = detailsHtml;
+        }
+        
+        // Update the legend
+        function updateLegend() {
+            const legend = document.getElementById('legend');
+            let legendHtml = `<h3>Legend</h3>`;
+            
+            // Node types
+            legendHtml += `<h4>Node Types</h4>`;
+            Object.keys(nodeColors).forEach(type => {
+                legendHtml += `
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: ${nodeColors[type]};"></div>
+                        <span>${type}</span>
+                    </div>
+                `;
+            });
+            
+            // Edge types
+            legendHtml += `<h4>Edge Types</h4>`;
+            
+            // Get unique edge types from the data
+            const uniqueEdgeTypes = [...new Set(graphData.edges.map(edge => edge.type))];
+            
+            uniqueEdgeTypes.forEach(type => {
+                const color = edgeColors[type] || "#999";
+                legendHtml += `
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: ${color};"></div>
+                        <span>${type}</span>
+                    </div>
+                `;
+            });
+            
+            legend.innerHTML = legendHtml;
+        }
+        
+        // Handle node click
+        function handleNodeClick(event, d) {
+            selectedNode = d;
+            updateNodeDetails();
+            
+            // Highlight connections
+            link.attr("stroke-opacity", link => 
+                (link.source.id === d.id || link.target.id === d.id) ? 1 : 0.2
+            );
+            
+            node.attr("opacity", node => 
+                (node.id === d.id || 
+                 filteredData.links.some(link => 
+                     (link.source.id === d.id && link.target.id === node.id) || 
+                     (link.target.id === d.id && link.source.id === node.id)
+                 )) ? 1 : 0.3
+            );
+            
+            // Prevent event propagation
+            event.stopPropagation();
+        }
+        
+        // Reset highlight when clicking elsewhere
+        function resetHighlight() {
+            link.attr("stroke-opacity", 0.6);
+            node.attr("opacity", 1);
+        }
+        
+        // Switch between analysis tabs
+        function switchTab(tabId) {
+            // Update active tab button
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+                if (button.getAttribute('data-tab') === tabId) {
+                    button.classList.add('active');
+                }
+            });
+            
+            // Hide all tab content
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Show the selected tab
+            document.getElementById(`${tabId}-tab`).classList.remove('hidden');
+        }
+        
+        // Update analysis content
+        function updateAnalysis() {
+            // Overview tab
+            const overviewTab = document.getElementById('overview-tab');
+            
+            const nodeTypeCount = {};
+            filteredData.nodes.forEach(node => {
+                nodeTypeCount[node.type] = (nodeTypeCount[node.type] || 0) + 1;
+            });
+            
+            const edgeTypeCount = {};
+            filteredData.links.forEach(link => {
+                edgeTypeCount[link.type] = (edgeTypeCount[link.type] || 0) + 1;
+            });
+            
+            let overviewHtml = `
+                <div class="statistics-panel">
+                    <h4>Graph Statistics</h4>
+                    <p>Total Nodes: ${filteredData.nodes.length} | Total Edges: ${filteredData.links.length}</p>
+                    
+                    <h4>Node Types</h4>
+                    <ul>
+            `;
+            
+            Object.entries(nodeTypeCount).forEach(([type, count]) => {
+                overviewHtml += `<li>${type}: ${count}</li>`;
+            });
+            
+            overviewHtml += `</ul><h4>Edge Types</h4><ul>`;
+            
+            Object.entries(edgeTypeCount).forEach(([type, count]) => {
+                overviewHtml += `<li>${type}: ${count}</li>`;
+            });
+            
+            overviewHtml += `</ul></div>`;
+            overviewTab.innerHTML = overviewHtml;
+            
+            // Connectivity tab
+            const connectivityTab = document.getElementById('connectivity-tab');
+            
+            // Calculate degree statistics
+            const degrees = filteredData.nodes.map(node => node.degree);
+            const avgDegree = degrees.reduce((sum, degree) => sum + degree, 0) / degrees.length || 0;
+            const maxDegree = Math.max(...degrees, 0);
+            const minDegree = Math.min(...degrees, 0);
+            
+            // Find highest degree nodes
+            const highDegreeNodes = [...filteredData.nodes]
+                .sort((a, b) => b.degree - a.degree)
+                .slice(0, 5);
+            
+            let connectivityHtml = `
+                <div class="statistics-panel">
+                    <h4>Connectivity Statistics</h4>
+                    <p>Average Connections per Node: ${avgDegree.toFixed(2)}</p>
+                    <p>Maximum Connections: ${maxDegree} | Minimum Connections: ${minDegree}</p>
+                    
+                    <h4>Most Connected Nodes</h4>
+                    <ul>
+            `;
+            
+            highDegreeNodes.forEach(node => {
+                connectivityHtml += `<li>${node.label} (${node.type}): ${node.degree} connections</li>`;
+            });
+            
+            connectivityHtml += `</ul></div>`;
+            connectivityTab.innerHTML = connectivityHtml;
+            
+            // Temporal tab
+            const temporalTab = document.getElementById('temporal-tab');
+            
+            // Extract timestamps from activity nodes
+            const activityNodes = filteredData.nodes.filter(node => node.type === 'activity' && node.timestamp);
+            
+            if (activityNodes.length > 0) {
+                // Sort activities by timestamp
+                const sortedActivities = [...activityNodes].sort((a, b) => 
+                    new Date(a.timestamp) - new Date(b.timestamp)
+                );
+                
+                const earliestActivity = sortedActivities[0];
+                const latestActivity = sortedActivities[sortedActivities.length - 1];
+                
+                let temporalHtml = `
+                    <div class="statistics-panel">
+                        <h4>Temporal Analysis</h4>
+                        <p>Activities Span: ${sortedActivities.length} activities over time</p>
+                        <p>Earliest Activity: ${new Date(earliestActivity.timestamp).toLocaleString()} (${earliestActivity.label})</p>
+                        <p>Latest Activity: ${new Date(latestActivity.timestamp).toLocaleString()} (${latestActivity.label})</p>
+                        
+                        <h4>Activity Timeline</h4>
+                        <ul>
+                `;
+                
+                // Show up to 10 activities in the timeline
+                sortedActivities.slice(0, 10).forEach(activity => {
+                    temporalHtml += `
+                        <li>${new Date(activity.timestamp).toLocaleString()}: ${activity.label} - ${activity.activity_type}</li>
+                    `;
+                });
+                
+                temporalHtml += `</ul></div>`;
+                temporalTab.innerHTML = temporalHtml;
+            } else {
+                temporalTab.innerHTML = `
+                    <div class="statistics-panel">
+                        <p>No activity nodes with timestamps found in the current view.</p>
+                    </div>
+                `;
+            }
+            
+            // Clusters tab
+            const clustersTab = document.getElementById('clusters-tab');
+            
+            // Simple cluster detection based on connected components
+            const components = findConnectedComponents(filteredData.nodes, filteredData.links);
+            
+            let clustersHtml = `
+                <div class="statistics-panel">
+                    <h4>Cluster Analysis</h4>
+                    <p>Number of Connected Components: ${components.length}</p>
+                    
+                    <h4>Component Sizes</h4>
+                    <ul>
+            `;
+            
+            components.forEach((component, index) => {
+                clustersHtml += `<li>Component ${index + 1}: ${component.length} nodes</li>`;
+            });
+            
+            clustersHtml += `</ul></div>`;
+            clustersTab.innerHTML = clustersHtml;
+        }
+        
+        // Find connected components (simple cluster detection)
+        function findConnectedComponents(nodes, links) {
+            const visited = new Set();
+            const components = [];
+            
+            for (const node of nodes) {
+                if (!visited.has(node.id)) {
+                    const component = [];
+                    dfs(node, component);
+                    components.push(component);
+                }
+            }
+            
+            return components;
+            
+            function dfs(node, component) {
+                visited.add(node.id);
+                component.push(node);
+                
+                const neighbors = [
+                    ...links.filter(link => link.source.id === node.id).map(link => link.target),
+                    ...links.filter(link => link.target.id === node.id).map(link => link.source)
+                ];
+                
+                for (const neighbor of neighbors) {
+                    if (!visited.has(neighbor.id)) {
+                        dfs(neighbor, component);
+                    }
+                }
+            }
+        }
+        
+        // Export the current graph view
+        function exportGraph() {
+            // Create a JSON representation of the visible graph
+            const exportData = {
+                nodes: filteredData.nodes.map(node => ({
+                    id: node.id,
+                    label: node.label,
+                    type: node.type,
+                    // Include all other properties
+                    ...node
+                })),
+                edges: filteredData.links.map(link => ({
+                    id: link.id,
+                    source: link.source.id,
+                    target: link.target.id,
+                    type: link.type
+                }))
+            };
+            
+            // Convert to JSON string
+            const jsonStr = JSON.stringify(exportData, null, 2);
+            
+            // Create a blob and download
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'network_export.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Drag functions for nodes
+        function drag(simulation) {
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+            
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+            
+            return d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended);
+        }
+        
+        // Click handler for the background to reset highlights
+        d3.select("#graph").on("click", () => {
+            resetHighlight();
+            selectedNode = null;
+            updateNodeDetails();
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (simulation) {
+                const width = document.getElementById('graph').clientWidth;
+                const height = document.getElementById('graph').clientHeight;
+                
+                svg.attr("width", width).attr("height", height);
+                simulation.force("center", d3.forceCenter(width / 2, height / 2)).restart();
+            }
+        });
+        
+        // Initial load
+        loadData();
+    </script>
+</body>
+</html>

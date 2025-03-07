@@ -1,0 +1,1 @@
+To run, use uv init pyproject.toml or import notebook.

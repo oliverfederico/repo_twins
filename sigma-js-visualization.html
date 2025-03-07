@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Social Network Graph Visualization</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    #graph-container {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: #f9f9f9;
+    }
+    #controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    .node-info {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 1;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      max-width: 300px;
+      display: none;
+    }
+    .legend {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      border-radius: 50%;
+    }
+  </style>
+  
+  <!-- Load Sigma.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/2.4.0/sigma.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/graphology/0.25.1/graphology.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/graphology-layout-forceatlas2/0.10.1/graphology-layout-forceatlas2.min.js"></script>
+</head>
+<body>
+  <div id="graph-container"></div>
+  
+  <div class="legend">
+    <h3>Node Types</h3>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #87CEFA;"></div>
+      <span>Profile</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #90EE90;"></div>
+      <span>Activity</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #F08080;"></div>
+      <span>Media</span>
+    </div>
+  </div>
+  
+  <div id="controls">
+    <button id="start-layout">Start Layout</button>
+    <button id="stop-layout">Stop Layout</button>
+    <button id="reset-camera">Reset View</button>
+    <div>
+      <label for="node-size">Node Size: </label>
+      <input type="range" id="node-size" min="1" max="20" value="8">
+    </div>
+  </div>
+  
+  <div id="node-info" class="node-info"></div>
+
+  <script>
+    // Load the graph data from the JSON file
+    fetch('filtered_social_network_for_sigmajs.json')
+      .then(response => response.json())
+      .then(data => {
+        // Create a new graph instance
+        const graph = new graphology.Graph({ multi: true });
+        
+        // Add nodes to the graph
+        if (data?.nodes?.length) {
+          data.nodes.forEach(node => {
+            if (node?.id) { // Ensure node and node.id exist
+              graph.addNode(node.id, {
+                label: node.label ?? "Unknown",  // Default label if missing
+                size: 8,
+                x: Math.random(),  // Random initial position
+                y: Math.random(),
+                color: getNodeColor(node?.type ?? "default"), // Fallback color
+                attributes: node ?? {}  // Ensure attributes is at least an empty object
+              });
+            }
+          });
+        }
+
+        
+        // Add edges to the graph
+        if (data?.edges?.length) {
+          data.edges.forEach(edge => {
+            if (edge?.source && edge?.target) { // Ensure both source and target exist
+              graph.addEdge(edge.source, edge.target, {
+                type: edge?.type ?? "default", // Default type if missing
+                size: 1,
+                color: '#ccc'
+              });
+            }
+          });
+        }
+
+        // Initialize the sigma instance
+        const renderer = new Sigma(graph, document.getElementById('graph-container'), {
+          renderEdgeLabels: false,
+          minCameraRatio: 0.1,
+          maxCameraRatio: 10
+        });
+        
+        // Initialize ForceAtlas2 layout
+        const layout = new ForceAtlas2Layout.ForceAtlas2Layout(graph, {
+          settings: {
+            gravity: 1,
+            scalingRatio: 10,
+            strongGravityMode: true,
+            slowDown: 10
+          }
+        });
+        
+        // Layout controls
+        let layoutRunning = false;
+        
+        document.getElementById('start-layout').addEventListener('click', () => {
+          if (!layoutRunning) {
+            layoutRunning = true;
+            layout.start();
+            animateLayout();
+          }
+        });
+        
+        document.getElementById('stop-layout').addEventListener('click', () => {
+          layoutRunning = false;
+          layout.stop();
+        });
+        
+        document.getElementById('reset-camera').addEventListener('click', () => {
+          renderer.getCamera().animatedReset();
+        });
+        
+        document.getElementById('node-size').addEventListener('input', (e) => {
+          const size = parseInt(e.target.value);
+          graph.forEachNode((node) => {
+            graph.setNodeAttribute(node, 'size', size);
+          });
+        });
+        
+        // Node click event for showing details
+        renderer.on('clickNode', ({ node }) => {
+          const attributes = graph.getNodeAttributes(node).attributes;
+          const infoDiv = document.getElementById('node-info');
+          
+          let html = `<h3>${attributes.label}</h3>`;
+          html += `<p>Type: ${attributes.type}</p>`;
+          
+          // Add specific attributes based on node type
+          if (attributes.type === 'profile') {
+            html += `<p>Profile Type: ${attributes.profile_type}</p>`;
+            html += `<p>Platform: ${attributes.platform}</p>`;
+            html += `<p>Region: ${attributes.region || 'N/A'}</p>`;
+          } else if (attributes.type === 'activity') {
+            html += `<p>Activity Type: ${attributes.activity_type}</p>`;
+            html += `<p>Platform: ${attributes.platform}</p>`;
+            html += `<p>Timestamp: ${attributes.timestamp}</p>`;
+          } else if (attributes.type === 'media') {
+            html += `<p>Media Type: ${attributes.media_type}</p>`;
+          }
+          
+          html += `<p>Connections: ${attributes.degree}</p>`;
+          
+          infoDiv.innerHTML = html;
+          infoDiv.style.display = 'block';
+        });
+        
+        // Click on background to hide node info
+        renderer.on('clickStage', () => {
+          document.getElementById('node-info').style.display = 'none';
+        });
+        
+        // Animation loop for layout
+        function animateLayout() {
+          if (layoutRunning) {
+            layout.tick();
+            requestAnimationFrame(animateLayout);
+          }
+        }
+        
+        // Helper function to get node color based on type
+        function getNodeColor(type) {
+          const colors = {
+            'profile': '#87CEFA',  // skyblue
+            'activity': '#90EE90', // lightgreen
+            'media': '#F08080'     // lightcoral
+          };
+          return colors[type] || '#999';
+        }
+        
+        // Start layout automatically
+        document.getElementById('start-layout').click();
+      })
+      .catch(error => console.error('Error loading graph data:', error));
+  </script>
+</body>
+</html>

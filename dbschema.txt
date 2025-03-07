@@ -1,0 +1,130 @@
+C:\Users\ruari\AppData\Local\Programs\Python\Python313\python.exe C:\Users\ruari\Desktop\sm_pii_anonymizer\dbschema.py 
+Database: output/social_network_anonymized.db
+
+Table: Media
+==================================================
+Schema:
+--------------------------------------------------
+CID | Name | Type | NotNull | Default | PK
+------------------------------------------
+0 | id | INTEGER | False | None | True
+1 | type | TEXT | False | None | False
+2 | file_reference | TEXT | False | None | False
+3 | original_url | TEXT | False | None | False
+
+Data:
+--------------------------------------------------
+id | type | file_reference | original_url
+--------------------------------------------------
+1 (int) | video (str) | AQNhLYiprPOJNFJ041YNoyQGhPgkS90J_7oFT9sapSRBr9aqmmjkMDha3dy-IpbF7c22r97lVknKasAtLWxc-mho.mp4 (str) |  (str)
+2 (int) | video (str) | AQMN1fCY0O1Kdgjx594MJBjjHG5edezwuot9PcN5sPruVsrytCEanujwEvZ8C9csbfFSleutip1JZJGVmXtD7FJ_.mp4 (str) |  (str)
+3 (int) | image (str) | 481011641_1077605357746039_1863054230928833396_n.jpg (str) |  (str)
+
+
+Table: ProfileActivity
+==================================================
+Schema:
+--------------------------------------------------
+CID | Name | Type | NotNull | Default | PK
+------------------------------------------
+0 | id | INTEGER | False | None | True
+1 | profile_id | INTEGER | True | None | False
+2 | activity_id | INTEGER | True | None | False
+3 | relationship_type | TEXT | False | None | False
+
+Data:
+--------------------------------------------------
+id | profile_id | activity_id | relationship_type
+--------------------------------------------------
+1 (int) | 27059 (int) | 1 (int) | source (str)
+2 (int) | 24703 (int) | 1 (int) | target (str)
+3 (int) | 27059 (int) | 2 (int) | source (str)
+
+
+Table: ActivityMedia
+==================================================
+Schema:
+--------------------------------------------------
+CID | Name | Type | NotNull | Default | PK
+------------------------------------------
+0 | id | INTEGER | False | None | True
+1 | activity_id | INTEGER | True | None | False
+2 | media_id | INTEGER | True | None | False
+3 | relationship_type | TEXT | False | None | False
+
+Data:
+--------------------------------------------------
+id | activity_id | media_id | relationship_type
+--------------------------------------------------
+1 (int) | 130597 (int) | 1 (int) | attached (str)
+2 (int) | 130598 (int) | 2 (int) | attached (str)
+3 (int) | 130599 (int) | 3 (int) | attached (str)
+
+
+Table: ProfileConnection
+==================================================
+Schema:
+--------------------------------------------------
+CID | Name | Type | NotNull | Default | PK
+------------------------------------------
+0 | id | INTEGER | False | None | True
+1 | source_id | INTEGER | True | None | False
+2 | target_id | INTEGER | True | None | False
+3 | connection_type | TEXT | False | None | False
+
+Data:
+--------------------------------------------------
+id | source_id | target_id | connection_type
+--------------------------------------------------
+1 (int) | 27059 (int) | 24703 (int) | ADDED_THEM_AS_A_FRIEND_ON_FACEBOOK (str)
+2 (int) | 27059 (int) | 36779 (int) | ADDED_THEM_AS_A_FRIEND_ON_FACEBOOK (str)
+3 (int) | 27059 (int) | 8299 (int) | ADDED_THEM_AS_A_FRIEND_ON_FACEBOOK (str)
+
+
+Table: Profiles
+==================================================
+Schema:
+--------------------------------------------------
+CID | Name | Type | NotNull | Default | PK
+------------------------------------------
+0 | id | INTEGER | False | None | True
+1 | name | TEXT | False | None | False
+2 | profile_type | TEXT | False | None | False
+3 | platform | TEXT | False | None | False
+4 | platform_id | TEXT | False | None | False
+5 | profile_url | TEXT | False | None | False
+6 | region | TEXT | False | None | False
+
+Data:
+--------------------------------------------------
+id | name | profile_type | platform | platform_id | profile_url | region
+--------------------------------------------------
+1 (int) | Michael Smith (str) | person (str) |  (str) | 409657442074875 (str) | https://www.facebook.com/user_1 (str) | western (str)
+2 (int) | Thomas Garcia (str) | person (str) |  (str) | 929191280443881 (str) | https://www.facebook.com/user_2 (str) | western (str)
+3 (int) | Michael Williams (str) | person (str) |  (str) | 575043098952809 (str) | https://www.facebook.com/user_3 (str) | western (str)
+
+
+Table: Activity
+==================================================
+Schema:
+--------------------------------------------------
+CID | Name | Type | NotNull | Default | PK
+------------------------------------------
+0 | id | INTEGER | False | None | True
+1 | type | TEXT | False | None | False
+2 | timestamp | INTEGER | False | None | False
+3 | content | TEXT | False | None | False
+4 | description | TEXT | False | None | False
+5 | platform | TEXT | False | None | False
+
+Data:
+--------------------------------------------------
+id | type | timestamp | content | description | platform
+--------------------------------------------------
+1 (int) | updated-friends-list-on-facebook (str) | 1734533582000 (int) |  (str) | Michael Taylor 53 connected with John Rodriguez 43 (str) | facebook (str)
+2 (int) | updated-friends-list-on-facebook (str) | 1734533582000 (int) |  (str) | Michael Taylor 53 connected with Robert Martinez 62 (str) | facebook (str)
+3 (int) | updated-friends-list-on-facebook (str) | 1734533582000 (int) |  (str) | Michael Taylor 53 connected with Jessica Taylor 8 (str) | facebook (str)
+
+
+
+Process finished with exit code 0
